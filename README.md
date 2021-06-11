@@ -14,6 +14,9 @@ MyObject myObject = ...
 TemporalityHandlerFactory.getInstance().getTemporalityHandler().writeTemporlityRecord(myObject), daoService);
 ```
 
+The object in the above example must implement the ITemporalityRecord interface. This defines the uniuqe primary key, a data key which is a logical key to the data and the validity information.
+Please see the test cases where all this is covered.
+
 ## Built With
 
 * [cb](https://github.com/toolarium/common-build) - The toolarium common build
