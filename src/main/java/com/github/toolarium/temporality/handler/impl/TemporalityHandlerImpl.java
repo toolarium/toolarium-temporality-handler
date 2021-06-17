@@ -67,11 +67,10 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
         log.debug("Write temporality record: " + toString(record));
         int result = 0;
 
-        boolean ignore = false;
-
         List<R> resultList = readTemporalityRecordList(daoService, record);
-        if (resultList != null && resultList.size() > 0) {
+        if (resultList != null) {
             // terminate entries
+            boolean ignore = false;
             for (R existingEntry : resultList) {
                 log.info("Check record " + record.getDataKey() + " (" + record.getPrimaryKey() + ") for update...");
 
@@ -81,11 +80,14 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
                     ignore = true;
                 }
             }
-        }
 
-        // write the temporal record
-        if (!ignore) {
-            result += writeTemporalRecord(daoService, TemporalityActionType.UPDATE, record, "Update entry: " + toString(record));
+            // write the temporal record
+            if (!ignore) {
+                result += writeTemporalRecord(daoService, TemporalityActionType.UPDATE, record, "Update entry: " + toString(record));
+            }
+
+        } else {
+            result += writeTemporalRecord(daoService, TemporalityActionType.CREATE, record, "Create entry: " + toString(record));
         }
 
         return result;

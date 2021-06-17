@@ -70,6 +70,20 @@ public class TemporalityHandlerTest {
 
 
     /**
+     * Write records test
+     */
+    @Test
+    public void writeTwoRecords() {
+        IDAOService<MyRecord> daoService = new MyRecordDAO();
+        createDataEntries(daoService, 1, Instant.now(), Instant.MAX);
+        createDataEntries(daoService, 1, Instant.now().plus(100, ChronoUnit.SECONDS), Instant.MAX);
+        createDataEntries(daoService, 1, Instant.now().plus(100, ChronoUnit.SECONDS), Instant.MAX);
+        
+        assertEquals(((MyRecordDAO)daoService).getNumberOfRecords(), 3);
+    }
+
+
+    /**
      * Write identical record, which means do nothing
      * <pre>
      * Case A: 1) <--(A)-->
