@@ -68,7 +68,7 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
         int result = 0;
 
         List<R> resultList = readTemporalityRecordList(daoService, record);
-        if (resultList != null) {
+        if (resultList != null && !resultList.isEmpty()) {
             // terminate entries
             boolean ignore = false;
             for (R existingEntry : resultList) {
