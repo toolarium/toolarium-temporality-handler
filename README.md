@@ -1,5 +1,5 @@
 [![License](https://img.shields.io/github/license/toolarium/toolarium-temporality-handler)](https://github.com/toolarium/toolarium-temporality-handler/blob/master/LICENSE)
-[![Maven Central](https://img.shields.io/maven-central/v/com.github.toolarium/toolarium-temporality-handler/0.9.0)](https://search.maven.org/artifact/com.github.toolarium/toolarium-temporality-handler/0.9.0/jar)
+[![Maven Central](https://img.shields.io/maven-central/v/com.github.toolarium/toolarium-temporality-handler/0.9.2)](https://search.maven.org/artifact/com.github.toolarium/toolarium-temporality-handler/0.9.2/jar)
 [![javadoc](https://javadoc.io/badge2/com.github.toolarium/toolarium-temporality-handler/javadoc.svg)](https://javadoc.io/doc/com.github.toolarium/toolarium-temporality-handler)
 
 # toolarium-temporality-handler
