@@ -386,6 +386,9 @@ public class TemporalityHandlerTest {
         createDataEntries(daoService, size, referenceTimestamp, referenceTimestamp.plus(5, ChronoUnit.DAYS));
         assertEquals(((MyRecordDAO)daoService).getNumberOfRecords(), size);
 
+        List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY2);
+        assertEquals(recordList.size(), 1);
+
         int i = 2;
 
         TemporalityHandlerFactory.getInstance()
@@ -399,7 +402,7 @@ public class TemporalityHandlerTest {
         assertEquals(((MyRecordDAO)daoService).getData().size(), size);
         assertEquals(((MyRecordDAO)daoService).getNumberOfRecords(), size);
 
-        List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY2);
+        recordList = ((MyRecordDAO)daoService).getData().get(KEY2);
         assertEquals(recordList.size(), 1);
 
         assertEquals("key2 / value2new2 / 2014-05-26T13:11:10Z - 2014-05-29T13:11:10Z", recordList.get(0).toString());
