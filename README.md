@@ -51,3 +51,21 @@ The following temporality cases are covered:
 ## Versioning
 
 We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/toolarium/toolarium-temporality-handler/tags). 
+
+### Gradle:
+
+```groovy
+dependencies {
+    implementation "com.github.toolarium:toolarium-temporality-handler:1.0.1"
+}
+```
+
+### Maven:
+
+```xml
+<dependency>
+    <groupId>com.github.toolarium</groupId>
+    <artifactId>toolarium-temporality-handler</artifactId>
+    <version>1.0.1</version>
+</dependency>
+```
