@@ -9,12 +9,13 @@ import com.github.toolarium.temporality.handler.IDAOService;
 import com.github.toolarium.temporality.handler.ITemporalityHandler;
 import com.github.toolarium.temporality.handler.ITemporalityRecord;
 import com.github.toolarium.temporality.handler.TemporalityActionType;
-import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.Month;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,8 +55,7 @@ import org.slf4j.LoggerFactory;
  *          2)     <---(B)------>
  * }</code>
  */
-public final class TemporalityHandlerImpl implements ITemporalityHandler, Serializable {
-    private static final long serialVersionUID = -1597927371967741727L;
+public final class TemporalityHandlerImpl implements ITemporalityHandler {
     private static final Logger log = LoggerFactory.getLogger(TemporalityHandlerImpl.class);
     
 
@@ -64,15 +64,34 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
      */
     @Override
     public <R extends ITemporalityRecord<R, P, D>, P, D> int writeTemporlityRecord(R record, IDAOService<R> daoService) {
-        log.debug("Write temporality record: " + toString(record));
+        if (record == null) {
+            throw new IllegalArgumentException("record must not be null");
+        }
+        if (daoService == null) {
+            throw new IllegalArgumentException("daoService must not be null");
+        }
+        if (record.getValidFrom() == null) {
+            throw new IllegalArgumentException("validFrom must not be null");
+        }
+        if (record.getValidTill() == null) {
+            throw new IllegalArgumentException("validTill must not be null");
+        }
+        if (!record.getValidTill().equals(Instant.MAX) && !record.getValidFrom().isBefore(record.getValidTill())) {
+            throw new IllegalArgumentException("validFrom must be before validTill");
+        }
+        if (log.isDebugEnabled()) {
+            log.debug("Write temporality record: {}", toString(record));
+        }
         int result = 0;
 
-        List<R> resultList = readTemporalityRecordList(daoService, record);
-        if (resultList != null && !resultList.isEmpty()) {
+        List<R> resultList = new ArrayList<>(readTemporalityRecordList(daoService, record));
+        if (!resultList.isEmpty()) {
             // terminate entries
             boolean ignore = false;
             for (R existingEntry : resultList) {
-                log.info("Check record " + record.getDataKey() + " (" + record.getPrimaryKey() + ") for update...");
+                if (log.isDebugEnabled()) {
+                    log.debug("Check record {} ({}) for update...", record.getDataKey(), record.getPrimaryKey());
+                }
 
                 KeyValueHolder<Integer, Boolean> k = updateExistingRecords(daoService, record, existingEntry);
                 result += k.getKey();
@@ -114,10 +133,14 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
             // existing entries starting earlier
             if (existingEntry.getValidTill().isBefore(record.getValidFrom())) { // <
                 // Case B: Add
-                log.debug("Keep original entry, because it is before (Case B): " + toString(existingEntry));
+                if (log.isDebugEnabled()) {
+                    log.debug("Keep original entry, because it is before (Case B): {}", toString(existingEntry));
+                }
             } else if (existingEntry.getValidTill().isAfter(record.getValidTill())) { // >
                 // Case F: Insert
-                log.debug("Insert entry, because it is before and after (Case F): " + toString(existingEntry));
+                if (log.isDebugEnabled()) {
+                    log.debug("Insert entry, because it is before and after (Case F): {}", toString(existingEntry));
+                }
                 R entry1 = existingEntry.clone();
                 entry1.setValidTill(record.getValidFrom());
                 result += writeTemporalRecord(daoService, TemporalityActionType.TERMINATE, entry1, "Terminate entry (Case F): " + toString(entry1));
@@ -141,7 +164,9 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
             } else if (existingEntry.getValidFrom().isAfter(record.getValidTill())) { // >
                 // Case C: Add
                 // ignore entries which starting in future
-                log.debug("Keep original entry, because it is in future (Case C): " + toString(existingEntry));
+                if (log.isDebugEnabled()) {
+                    log.debug("Keep original entry, because it is in future (Case C): {}", toString(existingEntry));
+                }
             } else {
                 // check if it is the same
                 R compareEntry = record.clone();
@@ -150,7 +175,9 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
                 if (existingEntry.equals(compareEntry)) {
                     // Case A: same record
                     // ignore already existing entry!
-                    log.debug("Identical entry found on database, ignore writing (Case A): [" + toString(record) + "] == [" + toString(existingEntry) + "].");
+                    if (log.isDebugEnabled()) {
+                        log.debug("Identical entry found on database, ignore writing (Case A): [{}] == [{}].", toString(record), toString(existingEntry));
+                    }
                     ignoreRecord = Boolean.TRUE;
                 } else if (isNotEmpty(existingEntry.getValidFrom()) && isNotEmpty(record.getValidFrom())
                           && existingEntry.getDataKey().equals(record.getDataKey())
@@ -161,6 +188,12 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
                     R entry = record.clone();
                     entry.setPrimaryKey(existingEntry.getPrimaryKey());
                     result += writeTemporalRecord(daoService, TemporalityActionType.TERMINATE, entry, "Terminate entry (Case H): " + toString(existingEntry) + " -> " + toString(record));
+                    if (existingEntry.getValidTill().isAfter(record.getValidTill())) {
+                        R remainder = existingEntry.clone();
+                        remainder.setPrimaryKey(null);
+                        remainder.setValidFrom(record.getValidTill());
+                        result += writeTemporalRecord(daoService, TemporalityActionType.CREATE, remainder, "Add remainder entry (Case H): " + toString(remainder));
+                    }
                     ignoreRecord = Boolean.TRUE;
                 } else {
                     // Case E: terminate
@@ -168,7 +201,9 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
                     // if from = till
                     if (isNotEmpty(record.getValidTill()) && isMaxInstant(record.getValidTill())) {
                         // Case E: empty record
-                        log.debug("Ignore record, nothing to terminate because max timestamp: [" + toString(existingEntry) + "], [" + toString(record) + "].");
+                        if (log.isDebugEnabled()) {
+                            log.debug("Ignore record, nothing to terminate because max timestamp: [{}], [{}].", toString(existingEntry), toString(record));
+                        }
                     } else if (existingEntry.getValidTill().equals(record.getValidTill())) { // ==
                         R entry = record.clone();
                         entry.setPrimaryKey(existingEntry.getPrimaryKey());
@@ -200,20 +235,19 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
      * @return the number of written entries
      */
     protected <R> int writeTemporalRecord(IDAOService<R> daoService, TemporalityActionType temporalityActionType, R record, String logComment) {
-        int result = 0;
-
         try {
-            if (logComment != null) {
+            if (log.isDebugEnabled() && logComment != null) {
                 log.debug(logComment);
             }
 
             daoService.write(temporalityActionType, record);
-            result++;
+            return 1;
         } catch (RuntimeException e) {
-            log.debug("Could not write: " + record + "\n->" + e.getMessage(), e);
+            if (log.isDebugEnabled()) {
+                log.debug("Could not write: {}\n-> {}", record, e.getMessage(), e);
+            }
+            throw e;
         }
-
-        return result;
     }
 
 
@@ -227,20 +261,19 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
      * @return the number of written entries
      */
     protected <T> int deleteTemporalRecord(IDAOService<T> daoService, T record, String logComment) {
-        int result = 0;
-
         try {
-            if (logComment != null) {
+            if (log.isDebugEnabled() && logComment != null) {
                 log.debug(logComment);
             }
 
             daoService.delete(record);
-            result++;
+            return 1;
         } catch (RuntimeException e) {
-            log.debug("Could not delete: " + record + "\n->" + e.getMessage(), e);
+            if (log.isDebugEnabled()) {
+                log.debug("Could not delete: {}\n-> {}", record, e.getMessage(), e);
+            }
+            throw e;
         }
-
-        return result;
     }
 
 
@@ -251,15 +284,21 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
      * @param recordFilter the record
      * @param daoService the service
      * @return the result
+     * @throws RuntimeException if the DAO search fails
      */
     protected <T> List<T> readTemporalityRecordList(IDAOService<T> daoService, T recordFilter) {
         try {
-            return daoService.search(recordFilter);
+            List<T> result = daoService.search(recordFilter);
+            if (result == null) {
+                return Collections.emptyList();
+            }
+            return result;
         } catch (Exception ex) {
-            log.debug("Could not read current configuration: " + ex.getMessage(), ex);
+            if (log.isDebugEnabled()) {
+                log.debug("Could not read current configuration: {}", ex.getMessage(), ex);
+            }
+            throw new RuntimeException("Failed to read temporality records", ex);
         }
-
-        return null;
     }
 
 
@@ -271,22 +310,21 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
      */
     protected String toString(ITemporalityRecord<?, ?, ?> record) {
         String dataKey = "(n/a)";
-        String primaryKey = "(n/a)";
-        String from = "(n/a)";
-        String to = "(n/a)";
-
         if (record.getDataKey() != null) {
             dataKey = record.getDataKey().toString();
         }
 
+        String primaryKey = "(n/a)";
         if (record.getPrimaryKey() != null) {
             primaryKey = "(" + record.getPrimaryKey().toString() + ")";
         }
 
+        String from = "(n/a)";
         if (record.getValidFrom() != null)  {
             from = DateTimeFormatter.ISO_INSTANT.format(record.getValidFrom());
         }
 
+        String to = "(n/a)";
         if (record.getValidTill() != null) {
             to = DateTimeFormatter.ISO_INSTANT.format(record.getValidTill());
         }
@@ -307,8 +345,8 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler, Serial
             return true;
         }
         
-        LocalDateTime d = LocalDateTime.ofInstant(instat, ZoneId.systemDefault());
-        if (d.getDayOfMonth() == 31 && Month.DECEMBER.equals(d.getMonth()) && d.getDayOfYear() >= 9999) {
+        LocalDateTime d = LocalDateTime.ofInstant(instat, ZoneOffset.UTC);
+        if (d.getDayOfMonth() == 31 && Month.DECEMBER.equals(d.getMonth()) && d.getYear() >= 9999) {
             return true;
         }
         

@@ -12,8 +12,7 @@ import java.util.Objects;
 /**
  * Simple record.
  *
- * @author pmeier
- * @version $Revision: 1.1 $
+ * @author patrick
  */
 public class MyRecord implements ITemporalityRecord<MyRecord, Long, String>, Cloneable {
     private Long primaryKey;

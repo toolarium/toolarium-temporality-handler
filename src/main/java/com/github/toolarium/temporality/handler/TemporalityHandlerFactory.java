@@ -11,8 +11,11 @@ import com.github.toolarium.temporality.handler.impl.TemporalityHandlerImpl;
  * Defines the temporality handler factory.
  */
 public final class TemporalityHandlerFactory {
-    private static TemporalityHandlerFactory instance;
-    private static final ThreadLocal<ITemporalityHandler> threadLocal = new ThreadLocal<ITemporalityHandler>();
+    private final ITemporalityHandler handler = new TemporalityHandlerImpl();
+
+    private static final class Holder {
+        static final TemporalityHandlerFactory INSTANCE = new TemporalityHandlerFactory();
+    }
 
 
     /**
@@ -29,11 +32,7 @@ public final class TemporalityHandlerFactory {
      * @return the instance
      */
     public static TemporalityHandlerFactory getInstance() {
-        if (instance == null) {
-            instance = new TemporalityHandlerFactory();
-        }
-
-        return instance;
+        return Holder.INSTANCE;
     }
 
 
@@ -43,12 +42,6 @@ public final class TemporalityHandlerFactory {
      * @return the temporality handler
      */
     public ITemporalityHandler getTemporalityHandler() {
-        ITemporalityHandler temporalityHandler = threadLocal.get();
-        if (temporalityHandler == null) {
-            temporalityHandler = new TemporalityHandlerImpl();
-            threadLocal.set(temporalityHandler);
-        }
-
-        return temporalityHandler;
+        return handler;
     }
 }
