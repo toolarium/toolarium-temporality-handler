@@ -75,9 +75,15 @@ public interface ITemporalityRecord<R, P, D> extends Cloneable {
 
 
     /**
-     * Clone
+     * Clone this record.
      *
-     * @return the cloned object
+     * <p>Implementors must return a copy that is independent from this instance: mutations of
+     * {@code validFrom}, {@code validTill}, and {@code primaryKey} on the clone must not affect
+     * the original, and vice versa. Because {@link java.time.Instant} is immutable these fields
+     * are inherently safe; all other mutable payload fields must be copied deeply enough to
+     * preserve this invariant.</p>
+     *
+     * @return a copy of this record
      */
     R clone();
 }

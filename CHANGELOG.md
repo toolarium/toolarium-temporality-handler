@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [ 1.0.3 ] - 2026-09-25
+## [ 1.0.3 ] - 2026-09-26
+### Fixed
+- Fixed Case G: a future record `[futureDate, MAX]` was not deleted when a new open-ended record `[now, MAX]` was written, causing both to be valid simultaneously from `futureDate` onward. The new record now correctly supersedes the future record, restoring the one-value-at-any-time invariant.
+- Fixed Case C boundary: existing record starting exactly at the new record's `validTill` (adjacent, zero gap) fell through to Case E and triggered an unnecessary DAO write. Case C now uses `!isBefore` (`>=`) instead of `isAfter` (`>`).
+
+### Changed
+- Canonical maximum `validTill` is now `9999-12-31T00:00:00Z`. Both `Instant.MAX` and any near-MAX value (year ≥ 9999, December 31) supplied as input are accepted as open-ended sentinels and normalised to this canonical value before any logic runs. The DAO therefore never receives `Instant.MAX` as a `validTill`.
+- Existing DB entries returned by `IDAOService.search()` whose `validTill` exceeds the configured maximum are automatically capped and written back before case logic runs. Entries whose `validFrom` is at or beyond the maximum are deleted on the same pass.
+- The canonical maximum `validTill` can be overridden at runtime via `TemporalityHandlerFactory.getInstance().setMaxValidTill(Instant)`. Default remains `9999-12-31T00:00:00Z`.
 
 ## [ 1.0.2 ] - 2026-09-25
 ### Changed

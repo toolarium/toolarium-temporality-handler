@@ -1,5 +1,5 @@
 [![License](https://img.shields.io/github/license/toolarium/toolarium-temporality-handler)](https://github.com/toolarium/toolarium-temporality-handler/blob/master/LICENSE)
-[![Maven Central](https://img.shields.io/maven-central/v/com.github.toolarium/toolarium-temporality-handler/1.0.2)](https://search.maven.org/artifact/com.github.toolarium/toolarium-temporality-handler/1.0.2/jar)
+[![Maven Central](https://img.shields.io/maven-central/v/com.github.toolarium/toolarium-temporality-handler/1.0.3)](https://search.maven.org/artifact/com.github.toolarium/toolarium-temporality-handler/1.0.3/jar)
 [![javadoc](https://javadoc.io/badge2/com.github.toolarium/toolarium-temporality-handler/javadoc.svg)](https://javadoc.io/doc/com.github.toolarium/toolarium-temporality-handler)
 
 # toolarium-temporality-handler
@@ -42,7 +42,7 @@ terminate, and delete decisions.
 | **Data key** | The logical identity of a piece of data (e.g. a configuration key, an entity ID). Multiple versions of the same data key can coexist, each covering a distinct time interval. |
 | **Primary key** | The physical storage key of a single record row. Each version has its own primary key. `null` means the storage layer should assign a new one. |
 | **validFrom** | Inclusive start of the interval during which this version is in effect. |
-| **validTill** | Exclusive end of the interval. Use `Instant.MAX` for an open-ended ("forever") record. |
+| **validTill** | Exclusive end of the interval. Use `Instant.MAX` (or `9999-12-31T00:00:00Z`) for an open-ended ("forever") record. Both are accepted and normalised to the canonical maximum before storage — `Instant.MAX` is never written to the DAO. The canonical maximum defaults to `9999-12-31T00:00:00Z` and can be changed via `TemporalityHandlerFactory.setMaxValidTill(Instant)`. |
 
 ---
 
@@ -163,7 +163,7 @@ ITemporalityRecord<R, P, D>
 | `D getDataKey()` | Logical identity used to locate existing versions |
 | `Instant getValidFrom()` | Inclusive start of validity |
 | `void setValidFrom(Instant)` | Used when splitting or shifting a record's interval |
-| `Instant getValidTill()` | Exclusive end of validity; use `Instant.MAX` for open-ended |
+| `Instant getValidTill()` | Exclusive end of validity; use `Instant.MAX` or the configured canonical maximum (`9999-12-31T00:00:00Z` by default) for open-ended |
 | `void setValidTill(Instant)` | Used when truncating a record's interval |
 | `R clone()` | Deep copy; called before every mutation so originals are never changed in-place |
 
@@ -197,7 +197,7 @@ ITemporalityHandler handler = TemporalityHandlerFactory.getInstance().getTempora
 ```
 
 - Singleton factory, thread-safe (initialization-on-demand holder).
-- Returns a single shared, stateless `TemporalityHandlerImpl` — safe to call from any thread.
+- Returns a single shared `TemporalityHandlerImpl` — safe to call concurrently from any thread.
 
 **Entry point:**
 
@@ -206,11 +206,27 @@ int written = handler.writeTemporlityRecord(record, daoService);
 ```
 
 Throws `IllegalArgumentException` if `record`, `daoService`, `validFrom`, or `validTill` is `null`,
-or if `validFrom >= validTill` (reversed or zero-length interval; the only exception is
-`validTill == Instant.MAX`).
+or if `validFrom >= validTill` (reversed or zero-length interval; the only exception is when
+`validTill` is `Instant.MAX` or the configured canonical maximum — see `setMaxValidTill`).
 
 Returns the number of DAO operations performed (writes + deletes). A return value of `0` means the
 record was identical to what is already stored (Case A — no-op).
+
+**Configuring the canonical maximum date (optional):**
+
+```java
+// set a custom maximum (call once at startup, before concurrent writes)
+TemporalityHandlerFactory.getInstance()
+    .setMaxValidTill(Instant.parse("2099-12-31T00:00:00Z"));
+
+// read the current maximum
+Instant max = TemporalityHandlerFactory.getInstance().getMaxValidTill();
+```
+
+Any `validTill` strictly greater than the configured maximum is capped to it automatically — both
+for incoming records and for records returned by `IDAOService.search()`. The default maximum is
+`9999-12-31T00:00:00Z`. Call `setMaxValidTill` once at application startup, before concurrent
+writes begin.
 
 ---
 
@@ -245,15 +261,15 @@ The existing record is not touched; the new record is inserted.
 
 ---
 
-### Case C — New record ends before existing starts
+### Case C — New record ends before or exactly when existing starts
 
 ```
 1)           <--(A)-->
 2)  <--(B)-->  <--(A)-->
 ```
 
-The new record's `validTill` is before the existing record's `validFrom`. There is no overlap.
-The existing record is not touched; the new record is inserted.
+The new record's `validTill` is less than or equal to the existing record's `validFrom`. There is
+no overlap. The existing record is not touched; the new record is inserted.
 
 ---
 
@@ -307,8 +323,10 @@ The existing record is split into two parts:
 2)  <----------(D)------->
 ```
 
-All existing records whose `validTill` falls within the new record's interval are **deleted**.
-The new record is inserted covering the entire span.
+All existing records that are fully contained within the new record's interval are **deleted**.
+This includes records that start after the new record's `validFrom` and end at or before the new
+record's `validTill` (equal `validTill` is covered). The new record is inserted covering the
+entire span.
 
 ---
 
@@ -377,8 +395,9 @@ handler.writeTemporlityRecord(new ConfigRecord("host", "delta", t2, t25), dao);
 - **Any record type** via generics — primary key, data key, and record type are all type parameters.
 - **Any persistence backend** via the `IDAOService` interface (relational DB, NoSQL, in-memory map, etc.).
 - **Audit hints** via `TemporalityActionType` passed to every `write()` call.
-- **Open-ended intervals** using `Instant.MAX` as a sentinel for "valid forever".
-- **Thread-local handler instances** provided by `TemporalityHandlerFactory`.
+- **Open-ended intervals** using `Instant.MAX` or `9999-12-31T00:00:00Z` as a sentinel for "valid forever"; both are normalised to the canonical maximum before storage.
+- **Automatic max-date enforcement**: any `validTill` exceeding the configured maximum is capped; DB entries beyond the maximum are corrected or deleted on the next write touching that key.
+- **Configurable canonical maximum date** via `TemporalityHandlerFactory.setMaxValidTill(Instant)` (default `9999-12-31T00:00:00Z`).
 
 ---
 
@@ -402,8 +421,13 @@ handler.writeTemporlityRecord(new ConfigRecord("host", "delta", t2, t25), dao);
 is created lazily and safely without any synchronization cost after the first access.
 
 `getTemporalityHandler()` returns a single shared `TemporalityHandlerImpl` instance.
-`TemporalityHandlerImpl` has no mutable instance fields, so it is inherently thread-safe and can be
-called concurrently from any number of threads without additional synchronization.
+`writeTemporlityRecord` itself carries no per-call mutable state and can be called concurrently
+from any number of threads without additional synchronization.
+
+The one mutable field, `maxValidTill`, is declared `volatile`. `setMaxValidTill` should be called
+once at application startup, before concurrent writes begin. Changing it while writes are in
+flight is safe at the JVM level but may cause some in-flight calls to use the old value and others
+the new one.
 
 Concurrent writes to the **same data key** still require external coordination (see
 [What the library does NOT cover](#what-the-library-does-not-cover)).
@@ -416,7 +440,7 @@ Concurrent writes to the **same data key** still require external coordination (
 
 ```groovy
 dependencies {
-    implementation "com.github.toolarium:toolarium-temporality-handler:1.0.2"
+    implementation "com.github.toolarium:toolarium-temporality-handler:1.0.3"
 }
 ```
 
@@ -426,7 +450,7 @@ dependencies {
 <dependency>
     <groupId>com.github.toolarium</groupId>
     <artifactId>toolarium-temporality-handler</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
 </dependency>
 ```
 

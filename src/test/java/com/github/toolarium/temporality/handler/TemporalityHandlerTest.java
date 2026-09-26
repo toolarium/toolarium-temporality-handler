@@ -53,6 +53,9 @@ public class TemporalityHandlerTest {
     private static final String KEY = "key";
     private static final String NEW = "new";
     private static final String SEP = " - ";
+    private static final String SMTP_HOST = "smtpHost";
+    private static final String NOW_DATE = "2026-01-01T00:00:00Z";
+    private static final String VAL_A = "a";
     private Instant referenceTimestamp;
 
 
@@ -112,7 +115,7 @@ public class TemporalityHandlerTest {
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY2);
         assertEquals(recordList.size(), 1);
-        assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - +1000000000-12-31T23:59:59.999999999Z", recordList.get(0).toString());
+        assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
     }
 
 
@@ -179,11 +182,11 @@ public class TemporalityHandlerTest {
         assertEquals(((MyRecordDAO)daoService).getNumberOfRecords(), size + 1);
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY2);
-        assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - +1000000000-12-31T23:59:59.999999999Z", recordList.get(0).toString());
+        assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
 
         recordList = ((MyRecordDAO)daoService).getData().get("key3");
         assertEquals(recordList.size(), 2);
-        assertEquals("key3 / value3 / 2014-05-26T13:11:10Z - +1000000000-12-31T23:59:59.999999999Z", recordList.get(0).toString());
+        assertEquals("key3 / value3 / 2014-05-26T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
         assertEquals("key3 / value3 / 2014-05-01T13:11:10Z - 2014-05-16T13:11:10Z", recordList.get(1).toString());
     }
 
@@ -217,7 +220,7 @@ public class TemporalityHandlerTest {
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY2);
         assertEquals(recordList.size(), 2);
         assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - 2014-05-30T13:11:10Z", recordList.get(0).toString());
-        assertEquals("key2 / value2 / 2014-05-30T13:11:10Z - +1000000000-12-31T23:59:59.999999999Z", recordList.get(1).toString());
+        assertEquals("key2 / value2 / 2014-05-30T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(1).toString());
     }
 
 
@@ -249,7 +252,7 @@ public class TemporalityHandlerTest {
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY2);
         assertEquals(recordList.size(), 2);
-        assertEquals("key2 / value2 / 2014-05-27T13:11:10Z - +1000000000-12-31T23:59:59.999999999Z", recordList.get(0).toString());
+        assertEquals("key2 / value2 / 2014-05-27T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
         assertEquals("key2 / value2 / 2014-05-25T13:11:10Z - 2014-05-27T13:11:10Z", recordList.get(1).toString());
     }
 
@@ -325,7 +328,7 @@ public class TemporalityHandlerTest {
 
         assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - 2014-05-29T13:11:10Z", recordList.get(0).toString());
         assertEquals("key2 / value2new / 2014-05-29T13:11:10Z - 2014-05-31T13:11:10Z", recordList.get(2).toString());
-        assertEquals("key2 / value2 / 2014-05-31T13:11:10Z - +1000000000-12-31T23:59:59.999999999Z", recordList.get(1).toString());
+        assertEquals("key2 / value2 / 2014-05-31T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(1).toString());
     }
 
 
@@ -428,20 +431,188 @@ public class TemporalityHandlerTest {
     public void writeRecordWithSameValidFromAndEarlierValidTill() {
         IDAOService<MyRecord> daoService = new MyRecordDAO();
         Instant start = DateTimeFormatter.ISO_DATE_TIME.parse("2025-01-01T00:00:00Z", Instant::from);
-        Instant mid   = DateTimeFormatter.ISO_DATE_TIME.parse("2026-01-01T00:00:00Z", Instant::from);
+        Instant mid   = DateTimeFormatter.ISO_DATE_TIME.parse(NOW_DATE, Instant::from);
 
         // record a: [2025-01-01, MAX)
         TemporalityHandlerFactory.getInstance().getTemporalityHandler()
-                .writeTemporlityRecord(new MyRecord("smtpHost", "mail.example.com", start, Instant.MAX), daoService);
+                .writeTemporlityRecord(new MyRecord(SMTP_HOST, "mail.example.com", start, Instant.MAX), daoService);
 
         // record b: [2025-01-01, 2026-01-01) — same start, earlier end
         TemporalityHandlerFactory.getInstance().getTemporalityHandler()
-                .writeTemporlityRecord(new MyRecord("smtpHost", "new-mail.example.com", start, mid), daoService);
+                .writeTemporlityRecord(new MyRecord(SMTP_HOST, "new-mail.example.com", start, mid), daoService);
 
-        List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get("smtpHost");
+        List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(SMTP_HOST);
         assertEquals(2, recordList.size());
         assertEquals("smtpHost / new-mail.example.com / 2025-01-01T00:00:00Z - 2026-01-01T00:00:00Z", recordList.get(0).toString());
-        assertEquals("smtpHost / mail.example.com / 2026-01-01T00:00:00Z - +1000000000-12-31T23:59:59.999999999Z", recordList.get(1).toString());
+        assertEquals("smtpHost / mail.example.com / 2026-01-01T00:00:00Z - 9999-12-31T00:00:00Z", recordList.get(1).toString());
+    }
+
+
+    /**
+     * Writing a record whose validTill is exactly the validFrom of an existing future record must
+     * keep both records without any DAO side-effect on the existing one (Case C adjacent boundary).
+     * <pre>
+     * existing: smtpHost = a   valid from 2030 until MAX
+     * new:      smtpHost = b   valid from now  until 2030
+     * expected: both kept, no overlap (adjacent)
+     * </pre>
+     */
+    @Test
+    public void writeRecordAdjacentToFutureRecord() {
+        IDAOService<MyRecord> daoService = new MyRecordDAO();
+        Instant now    = DateTimeFormatter.ISO_DATE_TIME.parse(NOW_DATE, Instant::from);
+        Instant future = DateTimeFormatter.ISO_DATE_TIME.parse("2030-01-01T00:00:00Z", Instant::from);
+
+        TemporalityHandlerFactory.getInstance().getTemporalityHandler()
+                .writeTemporlityRecord(new MyRecord(SMTP_HOST, VAL_A, future, Instant.MAX), daoService);
+
+        TemporalityHandlerFactory.getInstance().getTemporalityHandler()
+                .writeTemporlityRecord(new MyRecord(SMTP_HOST, "b", now, future), daoService);
+
+        List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(SMTP_HOST);
+        assertEquals(2, recordList.size());
+        assertEquals("smtpHost / a / 2030-01-01T00:00:00Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
+        assertEquals("smtpHost / b / 2026-01-01T00:00:00Z - 2030-01-01T00:00:00Z", recordList.get(1).toString());
+    }
+
+
+    /**
+     * Writing a new [now, MAX] record must supersede a future [2030, MAX] record so that only one
+     * value exists at every point in time (regression for the 1.0.2 Case G / Case E overlap bug).
+     * <pre>
+     * Before: smtpHost = a   valid from 2030 until MAX
+     * Write:  smtpHost = b   valid from now  until MAX
+     * After:  smtpHost = b   valid from now  until MAX  (only one record)
+     * </pre>
+     */
+    @Test
+    public void writePresentRecordSupersedesFutureRecord() {
+        IDAOService<MyRecord> daoService = new MyRecordDAO();
+        Instant now    = DateTimeFormatter.ISO_DATE_TIME.parse(NOW_DATE, Instant::from);
+        Instant future = DateTimeFormatter.ISO_DATE_TIME.parse("2030-01-01T00:00:00Z", Instant::from);
+
+        // future-only record written first
+        TemporalityHandlerFactory.getInstance().getTemporalityHandler()
+                .writeTemporlityRecord(new MyRecord(SMTP_HOST, VAL_A, future, Instant.MAX), daoService);
+
+        // present record supersedes it
+        TemporalityHandlerFactory.getInstance().getTemporalityHandler()
+                .writeTemporlityRecord(new MyRecord(SMTP_HOST, "b", now, Instant.MAX), daoService);
+
+        List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(SMTP_HOST);
+        assertEquals(1, recordList.size(), "only one smtpHost value must exist at any point in time");
+        assertEquals("smtpHost / b / 2026-01-01T00:00:00Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
+    }
+
+
+    /**
+     * An existing DB entry with validTill beyond maxValidTill that is kept by Case C (future entry,
+     * not touched by the new write) must still be written back immediately with the capped validTill
+     * so the DB never retains a too-large value.
+     */
+    @Test
+    public void existingEntryWithExcessiveValidTillIsNormalizedEvenUnderCaseC() {
+        Instant customMax = DateTimeFormatter.ISO_DATE_TIME.parse("2099-12-31T00:00:00Z", Instant::from);
+        Instant start     = DateTimeFormatter.ISO_DATE_TIME.parse(NOW_DATE, Instant::from);
+        Instant mid       = DateTimeFormatter.ISO_DATE_TIME.parse("2050-01-01T00:00:00Z", Instant::from);
+        Instant future    = DateTimeFormatter.ISO_DATE_TIME.parse("2060-01-01T00:00:00Z", Instant::from);
+
+        TemporalityHandlerFactory.getInstance().setMaxValidTill(customMax);
+        try {
+            IDAOService<MyRecord> daoService = new MyRecordDAO();
+
+            // manually-inserted future entry with too-large validTill
+            daoService.write(TemporalityActionType.CREATE, new MyRecord(SMTP_HOST, "future", future, Instant.MAX));
+
+            // new write ends before the future entry starts → Case C keeps it, but validTill must be capped in DB
+            TemporalityHandlerFactory.getInstance().getTemporalityHandler()
+                    .writeTemporlityRecord(new MyRecord(SMTP_HOST, VAL_A, start, mid), daoService);
+
+            List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(SMTP_HOST);
+            assertEquals(2, recordList.size());
+            // future entry must now have capped validTill in the DB
+            assertEquals("smtpHost / future / 2060-01-01T00:00:00Z - 2099-12-31T00:00:00Z", recordList.get(0).toString());
+            assertEquals("smtpHost / a / 2026-01-01T00:00:00Z - 2050-01-01T00:00:00Z", recordList.get(1).toString());
+        } finally {
+            TemporalityHandlerFactory.getInstance().setMaxValidTill(
+                    DateTimeFormatter.ISO_DATE_TIME.parse("9999-12-31T00:00:00Z", Instant::from));
+        }
+    }
+
+
+    /**
+     * An existing DB entry whose validFrom is at or beyond maxValidTill is entirely out of the
+     * valid time range and must be deleted when the next write touches that key.
+     */
+    @Test
+    public void outOfRangeExistingEntryIsDeleted() {
+        Instant customMax = DateTimeFormatter.ISO_DATE_TIME.parse("2099-12-31T00:00:00Z", Instant::from);
+        Instant beyond    = DateTimeFormatter.ISO_DATE_TIME.parse("2150-01-01T00:00:00Z", Instant::from);
+        Instant start     = DateTimeFormatter.ISO_DATE_TIME.parse(NOW_DATE, Instant::from);
+
+        TemporalityHandlerFactory.getInstance().setMaxValidTill(customMax);
+        try {
+            IDAOService<MyRecord> daoService = new MyRecordDAO();
+
+            // simulate a manually-inserted entry whose validFrom is beyond maxValidTill
+            daoService.write(TemporalityActionType.CREATE, new MyRecord(SMTP_HOST, "stale", beyond, Instant.MAX));
+
+            // a normal write must clean up the out-of-range entry
+            TemporalityHandlerFactory.getInstance().getTemporalityHandler()
+                    .writeTemporlityRecord(new MyRecord(SMTP_HOST, VAL_A, start, customMax), daoService);
+
+            List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(SMTP_HOST);
+            assertEquals(1, recordList.size());
+            assertEquals("smtpHost / a / 2026-01-01T00:00:00Z - 2099-12-31T00:00:00Z", recordList.get(0).toString());
+        } finally {
+            TemporalityHandlerFactory.getInstance().setMaxValidTill(
+                    DateTimeFormatter.ISO_DATE_TIME.parse("9999-12-31T00:00:00Z", Instant::from));
+        }
+    }
+
+
+    /**
+     * The canonical max date can be overridden via the factory; records with validTill beyond the
+     * custom max are capped accordingly, and the default is restored afterwards.
+     */
+    @Test
+    public void customMaxValidTillIsRespected() {
+        Instant customMax = DateTimeFormatter.ISO_DATE_TIME.parse("2099-12-31T00:00:00Z", Instant::from);
+        Instant beyond    = DateTimeFormatter.ISO_DATE_TIME.parse("2150-01-01T00:00:00Z", Instant::from);
+        Instant start     = DateTimeFormatter.ISO_DATE_TIME.parse(NOW_DATE, Instant::from);
+
+        TemporalityHandlerFactory.getInstance().setMaxValidTill(customMax);
+        try {
+            IDAOService<MyRecord> daoService = new MyRecordDAO();
+            TemporalityHandlerFactory.getInstance().getTemporalityHandler()
+                    .writeTemporlityRecord(new MyRecord(SMTP_HOST, VAL_A, start, beyond), daoService);
+
+            List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(SMTP_HOST);
+            assertEquals(1, recordList.size());
+            assertEquals("smtpHost / a / 2026-01-01T00:00:00Z - 2099-12-31T00:00:00Z", recordList.get(0).toString());
+        } finally {
+            TemporalityHandlerFactory.getInstance().setMaxValidTill(
+                    DateTimeFormatter.ISO_DATE_TIME.parse("9999-12-31T00:00:00Z", Instant::from));
+        }
+    }
+
+
+    /**
+     * Any validTill strictly greater than the canonical max (9999-12-31T00:00:00Z) — whether
+     * Instant.MAX or an arbitrary far-future date — is capped to the canonical max before processing.
+     */
+    @Test
+    public void validTillBeyondCanonicalMaxIsCapped() {
+        IDAOService<MyRecord> daoService = new MyRecordDAO();
+        Instant start = DateTimeFormatter.ISO_DATE_TIME.parse(NOW_DATE, Instant::from);
+        Instant beyondMax = LocalDateTime.of(10000, Month.JANUARY, 15, 0, 0, 0).toInstant(ZoneOffset.UTC);
+
+        TemporalityHandlerFactory.getInstance().getTemporalityHandler()
+                .writeTemporlityRecord(new MyRecord(SMTP_HOST, VAL_A, start, beyondMax), daoService);
+
+        List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(SMTP_HOST);
+        assertEquals(1, recordList.size());
+        assertEquals("smtpHost / a / 2026-01-01T00:00:00Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
     }
 
 
@@ -608,7 +779,7 @@ public class TemporalityHandlerTest {
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY);
         assertEquals(1, recordList.size());
-        assertEquals("key / valuenew / 2014-05-26T13:11:10Z - +1000000000-12-31T23:59:59.999999999Z", recordList.get(0).toString());
+        assertEquals("key / valuenew / 2014-05-26T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
     }
 
 
@@ -732,29 +903,29 @@ public class TemporalityHandlerTest {
 
 
     /**
-     * Dec-31-9999 is treated as a max instant: in Case E, when the new record's validTill is near-max,
-     * the existing record must not be shifted (it would produce a nonsensical reversed interval if
-     * isMaxInstant failed to recognise the near-max value).
+     * Both Instant.MAX and near-max (Dec-31-9999) are accepted as open-ended sentinel values and
+     * normalised to the canonical DB max (9999-12-31T00:00:00Z) before any logic runs.
+     * A new record whose validTill is near-max therefore fully supersedes an existing future record
+     * (Case G), leaving exactly one value at every point in time.
      */
     @Test
-    public void nearMaxInstantTreatedAsMax() {
+    public void nearMaxValidTillNormalizedToCanonicalMax() {
         IDAOService<MyRecord> daoService = new MyRecordDAO();
         Instant t1 = referenceTimestamp;
         Instant t2 = t1.plus(2, ChronoUnit.DAYS);
         Instant nearMax = LocalDateTime.of(9999, Month.DECEMBER, 31, 0, 0, 0).toInstant(ZoneOffset.UTC);
 
-        // Existing: [t2, MAX) — validTill must be >= nearMax so Case E is entered, not Case G
+        // existing written with Instant.MAX — normalised to canonical max on read
         TemporalityHandlerFactory.getInstance().getTemporalityHandler()
             .writeTemporlityRecord(new MyRecord(KEY, VALUE, t2, Instant.MAX), daoService);
 
-        // New record ends at near-max: isMaxInstant must recognise it so the existing record is NOT shifted
+        // new record uses near-max sentinel — also normalised → supersedes existing via Case G
         TemporalityHandlerFactory.getInstance().getTemporalityHandler()
             .writeTemporlityRecord(new MyRecord(KEY, VALUE + NEW, t1, nearMax), daoService);
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY);
-        assertEquals(2, recordList.size());
-        assertEquals("key / value / " + t2 + " - +1000000000-12-31T23:59:59.999999999Z", recordList.get(0).toString());
-        assertEquals("key / valuenew / " + t1 + SEP + nearMax, recordList.get(1).toString());
+        assertEquals(1, recordList.size());
+        assertEquals("key / valuenew / " + t1 + " - 9999-12-31T00:00:00Z", recordList.get(0).toString());
     }
 
 
@@ -784,6 +955,24 @@ public class TemporalityHandlerTest {
                                                referenceTimestamp.plus(1, ChronoUnit.DAYS),
                                                referenceTimestamp.plus(3, ChronoUnit.DAYS)), daoService2);
         assertEquals(3, result);
+    }
+
+
+    /**
+     * A specific RuntimeException subtype thrown by search() must reach the caller with its original type intact,
+     * not wrapped in a generic RuntimeException (regression for R-1 fix).
+     */
+    @Test
+    public void searchExceptionTypeIsPreserved() {
+        IDAOService<MyRecord> daoService = new MyRecordDAO() {
+            @Override
+            public synchronized List<MyRecord> search(MyRecord recordFilter) {
+                throw new IllegalStateException("search failed with specific type");
+            }
+        };
+        MyRecord record = new MyRecord(KEY, VALUE, referenceTimestamp, Instant.MAX);
+        assertThrows(IllegalStateException.class, () ->
+            TemporalityHandlerFactory.getInstance().getTemporalityHandler().writeTemporlityRecord(record, daoService));
     }
 
 
