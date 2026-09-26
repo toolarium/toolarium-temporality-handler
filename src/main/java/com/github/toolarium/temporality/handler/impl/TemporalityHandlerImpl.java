@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class TemporalityHandlerImpl implements ITemporalityHandler {
     private static final Logger log = LoggerFactory.getLogger(TemporalityHandlerImpl.class);
-    private volatile Instant maxValidTill = LocalDateTime.of(9999, Month.DECEMBER, 31, 0, 0, 0).toInstant(ZoneOffset.UTC);
+    private volatile Instant maxValidTill = LocalDateTime.of(9999, Month.DECEMBER, 31, 12, 0, 0).toInstant(ZoneOffset.UTC);
 
 
     /**

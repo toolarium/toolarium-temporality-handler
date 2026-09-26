@@ -115,7 +115,7 @@ public class TemporalityHandlerTest {
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY2);
         assertEquals(recordList.size(), 1);
-        assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
+        assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - 9999-12-31T12:00:00Z", recordList.get(0).toString());
     }
 
 
@@ -182,11 +182,11 @@ public class TemporalityHandlerTest {
         assertEquals(((MyRecordDAO)daoService).getNumberOfRecords(), size + 1);
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY2);
-        assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
+        assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - 9999-12-31T12:00:00Z", recordList.get(0).toString());
 
         recordList = ((MyRecordDAO)daoService).getData().get("key3");
         assertEquals(recordList.size(), 2);
-        assertEquals("key3 / value3 / 2014-05-26T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
+        assertEquals("key3 / value3 / 2014-05-26T13:11:10Z - 9999-12-31T12:00:00Z", recordList.get(0).toString());
         assertEquals("key3 / value3 / 2014-05-01T13:11:10Z - 2014-05-16T13:11:10Z", recordList.get(1).toString());
     }
 
@@ -220,7 +220,7 @@ public class TemporalityHandlerTest {
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY2);
         assertEquals(recordList.size(), 2);
         assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - 2014-05-30T13:11:10Z", recordList.get(0).toString());
-        assertEquals("key2 / value2 / 2014-05-30T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(1).toString());
+        assertEquals("key2 / value2 / 2014-05-30T13:11:10Z - 9999-12-31T12:00:00Z", recordList.get(1).toString());
     }
 
 
@@ -252,7 +252,7 @@ public class TemporalityHandlerTest {
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY2);
         assertEquals(recordList.size(), 2);
-        assertEquals("key2 / value2 / 2014-05-27T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
+        assertEquals("key2 / value2 / 2014-05-27T13:11:10Z - 9999-12-31T12:00:00Z", recordList.get(0).toString());
         assertEquals("key2 / value2 / 2014-05-25T13:11:10Z - 2014-05-27T13:11:10Z", recordList.get(1).toString());
     }
 
@@ -328,7 +328,7 @@ public class TemporalityHandlerTest {
 
         assertEquals("key2 / value2 / 2014-05-26T13:11:10Z - 2014-05-29T13:11:10Z", recordList.get(0).toString());
         assertEquals("key2 / value2new / 2014-05-29T13:11:10Z - 2014-05-31T13:11:10Z", recordList.get(2).toString());
-        assertEquals("key2 / value2 / 2014-05-31T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(1).toString());
+        assertEquals("key2 / value2 / 2014-05-31T13:11:10Z - 9999-12-31T12:00:00Z", recordList.get(1).toString());
     }
 
 
@@ -444,7 +444,7 @@ public class TemporalityHandlerTest {
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(SMTP_HOST);
         assertEquals(2, recordList.size());
         assertEquals("smtpHost / new-mail.example.com / 2025-01-01T00:00:00Z - 2026-01-01T00:00:00Z", recordList.get(0).toString());
-        assertEquals("smtpHost / mail.example.com / 2026-01-01T00:00:00Z - 9999-12-31T00:00:00Z", recordList.get(1).toString());
+        assertEquals("smtpHost / mail.example.com / 2026-01-01T00:00:00Z - 9999-12-31T12:00:00Z", recordList.get(1).toString());
     }
 
 
@@ -471,7 +471,7 @@ public class TemporalityHandlerTest {
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(SMTP_HOST);
         assertEquals(2, recordList.size());
-        assertEquals("smtpHost / a / 2030-01-01T00:00:00Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
+        assertEquals("smtpHost / a / 2030-01-01T00:00:00Z - 9999-12-31T12:00:00Z", recordList.get(0).toString());
         assertEquals("smtpHost / b / 2026-01-01T00:00:00Z - 2030-01-01T00:00:00Z", recordList.get(1).toString());
     }
 
@@ -501,7 +501,7 @@ public class TemporalityHandlerTest {
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(SMTP_HOST);
         assertEquals(1, recordList.size(), "only one smtpHost value must exist at any point in time");
-        assertEquals("smtpHost / b / 2026-01-01T00:00:00Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
+        assertEquals("smtpHost / b / 2026-01-01T00:00:00Z - 9999-12-31T12:00:00Z", recordList.get(0).toString());
     }
 
 
@@ -535,7 +535,7 @@ public class TemporalityHandlerTest {
             assertEquals("smtpHost / a / 2026-01-01T00:00:00Z - 2050-01-01T00:00:00Z", recordList.get(1).toString());
         } finally {
             TemporalityHandlerFactory.getInstance().setMaxValidTill(
-                    DateTimeFormatter.ISO_DATE_TIME.parse("9999-12-31T00:00:00Z", Instant::from));
+                    DateTimeFormatter.ISO_DATE_TIME.parse("9999-12-31T12:00:00Z", Instant::from));
         }
     }
 
@@ -566,7 +566,7 @@ public class TemporalityHandlerTest {
             assertEquals("smtpHost / a / 2026-01-01T00:00:00Z - 2099-12-31T00:00:00Z", recordList.get(0).toString());
         } finally {
             TemporalityHandlerFactory.getInstance().setMaxValidTill(
-                    DateTimeFormatter.ISO_DATE_TIME.parse("9999-12-31T00:00:00Z", Instant::from));
+                    DateTimeFormatter.ISO_DATE_TIME.parse("9999-12-31T12:00:00Z", Instant::from));
         }
     }
 
@@ -592,13 +592,13 @@ public class TemporalityHandlerTest {
             assertEquals("smtpHost / a / 2026-01-01T00:00:00Z - 2099-12-31T00:00:00Z", recordList.get(0).toString());
         } finally {
             TemporalityHandlerFactory.getInstance().setMaxValidTill(
-                    DateTimeFormatter.ISO_DATE_TIME.parse("9999-12-31T00:00:00Z", Instant::from));
+                    DateTimeFormatter.ISO_DATE_TIME.parse("9999-12-31T12:00:00Z", Instant::from));
         }
     }
 
 
     /**
-     * Any validTill strictly greater than the canonical max (9999-12-31T00:00:00Z) — whether
+     * Any validTill strictly greater than the canonical max (9999-12-31T12:00:00Z) — whether
      * Instant.MAX or an arbitrary far-future date — is capped to the canonical max before processing.
      */
     @Test
@@ -612,7 +612,7 @@ public class TemporalityHandlerTest {
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(SMTP_HOST);
         assertEquals(1, recordList.size());
-        assertEquals("smtpHost / a / 2026-01-01T00:00:00Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
+        assertEquals("smtpHost / a / 2026-01-01T00:00:00Z - 9999-12-31T12:00:00Z", recordList.get(0).toString());
     }
 
 
@@ -779,7 +779,7 @@ public class TemporalityHandlerTest {
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY);
         assertEquals(1, recordList.size());
-        assertEquals("key / valuenew / 2014-05-26T13:11:10Z - 9999-12-31T00:00:00Z", recordList.get(0).toString());
+        assertEquals("key / valuenew / 2014-05-26T13:11:10Z - 9999-12-31T12:00:00Z", recordList.get(0).toString());
     }
 
 
@@ -904,7 +904,7 @@ public class TemporalityHandlerTest {
 
     /**
      * Both Instant.MAX and near-max (Dec-31-9999) are accepted as open-ended sentinel values and
-     * normalised to the canonical DB max (9999-12-31T00:00:00Z) before any logic runs.
+     * normalised to the canonical DB max (9999-12-31T12:00:00Z) before any logic runs.
      * A new record whose validTill is near-max therefore fully supersedes an existing future record
      * (Case G), leaving exactly one value at every point in time.
      */
@@ -913,7 +913,7 @@ public class TemporalityHandlerTest {
         IDAOService<MyRecord> daoService = new MyRecordDAO();
         Instant t1 = referenceTimestamp;
         Instant t2 = t1.plus(2, ChronoUnit.DAYS);
-        Instant nearMax = LocalDateTime.of(9999, Month.DECEMBER, 31, 0, 0, 0).toInstant(ZoneOffset.UTC);
+        Instant nearMax = LocalDateTime.of(9999, Month.DECEMBER, 31, 12, 0, 0).toInstant(ZoneOffset.UTC);
 
         // existing written with Instant.MAX — normalised to canonical max on read
         TemporalityHandlerFactory.getInstance().getTemporalityHandler()
@@ -925,7 +925,7 @@ public class TemporalityHandlerTest {
 
         List<MyRecord> recordList = ((MyRecordDAO)daoService).getData().get(KEY);
         assertEquals(1, recordList.size());
-        assertEquals("key / valuenew / " + t1 + " - 9999-12-31T00:00:00Z", recordList.get(0).toString());
+        assertEquals("key / valuenew / " + t1 + " - 9999-12-31T12:00:00Z", recordList.get(0).toString());
     }
 
 
