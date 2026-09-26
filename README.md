@@ -1,5 +1,5 @@
 [![License](https://img.shields.io/github/license/toolarium/toolarium-temporality-handler)](https://github.com/toolarium/toolarium-temporality-handler/blob/master/LICENSE)
-[![Maven Central](https://img.shields.io/maven-central/v/com.github.toolarium/toolarium-temporality-handler/1.0.3)](https://search.maven.org/artifact/com.github.toolarium/toolarium-temporality-handler/1.0.3/jar)
+[![Maven Central](https://img.shields.io/maven-central/v/com.github.toolarium/toolarium-temporality-handler/1.1.0)](https://search.maven.org/artifact/com.github.toolarium/toolarium-temporality-handler/1.1.0/jar)
 [![javadoc](https://javadoc.io/badge2/com.github.toolarium/toolarium-temporality-handler/javadoc.svg)](https://javadoc.io/doc/com.github.toolarium/toolarium-temporality-handler)
 
 # toolarium-temporality-handler
@@ -24,14 +24,17 @@ terminate, and delete decisions.
    - [IDAOService](#idaoservice)
    - [TemporalityActionType](#temporalityactiontype)
    - [TemporalityHandlerFactory](#temporalityhandlerfactory)
-4. [Temporal cases](#temporal-cases)
-5. [Step-by-step example](#step-by-step-example)
-6. [What the library covers](#what-the-library-covers)
-7. [What the library does NOT cover](#what-the-library-does-not-cover)
-8. [Thread safety](#thread-safety)
-9. [Dependency setup](#dependency-setup)
-10. [Built with](#built-with)
-11. [Versioning](#versioning)
+4. [Normalizer](#normalizer)
+   - [ITemporalityNormalizer](#itemporalitynormalizer)
+   - [TemporalityPriority](#temporalitypriority)
+5. [Temporal cases](#temporal-cases)
+6. [Step-by-step example](#step-by-step-example)
+7. [What the library covers](#what-the-library-covers)
+8. [What the library does NOT cover](#what-the-library-does-not-cover)
+9. [Thread safety](#thread-safety)
+10. [Dependency setup](#dependency-setup)
+11. [Built with](#built-with)
+12. [Versioning](#versioning)
 
 ---
 
@@ -230,6 +233,98 @@ writes begin.
 
 ---
 
+## Normalizer
+
+The normalizer resolves a set of already-persisted records for **one data key** whose validity
+intervals may overlap into a clean, gap-free timeline. It is the complement to
+`writeTemporlityRecord` — instead of ingesting one new record it reconciles an entire set of
+existing records that were written without temporal consistency checks (e.g. bulk imports, data
+migrations, or merges from multiple sources).
+
+### Usage
+
+```java
+// 1. Load all records for one data key
+List<ConfigRecord> records = dao.search(new ConfigRecord("smtpHost", ...));
+
+// 2. Normalize — the dao receives UPDATE / TERMINATE / CREATE callbacks
+ITemporalityNormalizer normalizer =
+    TemporalityHandlerFactory.getInstance().getTemporalityNormalizer();
+normalizer.normalize(records, dao);
+```
+
+All records in the list must already have a primary key (i.e. they are persisted). Records with a
+`null` primary key are skipped silently.
+
+### What the normalizer does
+
+1. Computes the consistent timeline from the input records using the configured priority
+   (default: latest `validFrom` wins when intervals overlap).
+2. Calls `dao.write(UPDATE, record)` for every record that survived unchanged.
+3. Calls `dao.write(TERMINATE, record)` for every record that was replaced — its `validTill` is
+   set to its own `validFrom` in-place before the call (zero-length = tombstone).
+4. Calls `dao.write(CREATE, segment)` for every new trimmed segment produced by the timeline,
+   with `primaryKey = null` so the storage layer assigns a new key.
+5. Asserts that the resulting timeline is overlap-free (throws `IllegalStateException` otherwise —
+   this indicates a bug in the priority logic).
+
+**Example — two overlapping records, latest-start wins:**
+
+```
+Before:
+  A [Jan–Mar)   pk=1   value="old"
+  B [Feb–Mar)   pk=2   value="new"   ← starts later → higher priority
+
+After normalize():
+  dao.write(TERMINATE, A)                          // pk=1, validTill set to validFrom
+  dao.write(UPDATE,    B)                          // pk=2, unchanged
+  dao.write(CREATE,   [Jan–Feb) copy of A, pk=null)   // trimmed leading segment inserted
+```
+
+### Custom priority
+
+Pass a `Comparator` as the third argument to override the default priority:
+
+```java
+// Earliest-start-wins
+normalizer.normalize(records, dao,
+    TemporalityPriority.<ConfigRecord>latestStart().reversed());
+
+// Source-ranked priority ("official" beats "import" beats "legacy")
+Comparator<String> sourceRank =
+    Comparator.comparingInt(List.of("official", "import", "legacy")::indexOf);
+normalizer.normalize(records, dao,
+    TemporalityPriority.byGroup(ConfigRecord::getSource, sourceRank));
+```
+
+### ITemporalityNormalizer
+
+```
+ITemporalityNormalizer
+```
+
+| Method | Description |
+|---|---|
+| `normalize(records, dao)` | Normalize using the default priority (latest `validFrom` wins) |
+| `normalize(records, dao, priority)` | Normalize using the supplied comparator; the highest-priority record is first in comparator order |
+
+Both methods throw `IllegalArgumentException` if any argument is `null`, and `IllegalStateException`
+if the resulting timeline still contains overlaps.
+
+### TemporalityPriority
+
+Utility class (`com.github.toolarium.temporality.handler.util`) with factory methods for common
+priority strategies. All comparators order the **highest-priority record first**.
+
+| Method | Description |
+|---|---|
+| `latestStart()` | The record with the most recent `validFrom` wins when intervals overlap |
+| `latestStart().reversed()` | Earliest-start-wins |
+| `byGroup(groupFn, groupOrder)` | Records ranked by their group; within the same group, latest start wins |
+| `groupsByCurrentStart(records, groupFn, now, tieBreaker)` | Orders *groups* by the `validFrom` of their currently valid record; groups without a currently valid record come last |
+
+---
+
 ## Temporal cases
 
 The diagram notation is: time flows left → right. Each row shows the **before** state (1) and the
@@ -398,6 +493,7 @@ handler.writeTemporlityRecord(new ConfigRecord("host", "delta", t2, t25), dao);
 - **Open-ended intervals** using `Instant.MAX` or `9999-12-31T00:00:00Z` as a sentinel for "valid forever"; both are normalised to the canonical maximum before storage.
 - **Automatic max-date enforcement**: any `validTill` exceeding the configured maximum is capped; DB entries beyond the maximum are corrected or deleted on the next write touching that key.
 - **Configurable canonical maximum date** via `TemporalityHandlerFactory.setMaxValidTill(Instant)` (default `9999-12-31T00:00:00Z`).
+- **Normalizer** (`ITemporalityNormalizer`) to reconcile already-persisted overlapping records into a consistent timeline, with pluggable priority strategies via `TemporalityPriority`.
 
 ---
 
@@ -440,7 +536,7 @@ Concurrent writes to the **same data key** still require external coordination (
 
 ```groovy
 dependencies {
-    implementation "com.github.toolarium:toolarium-temporality-handler:1.0.3"
+    implementation "com.github.toolarium:toolarium-temporality-handler:1.1.0"
 }
 ```
 
@@ -450,7 +546,7 @@ dependencies {
 <dependency>
     <groupId>com.github.toolarium</groupId>
     <artifactId>toolarium-temporality-handler</artifactId>
-    <version>1.0.3</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 

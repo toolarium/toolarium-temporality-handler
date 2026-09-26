@@ -30,8 +30,26 @@ public class MyRecord implements ITemporalityRecord<MyRecord, Long, String>, Clo
      * @param validFrom the valid from
      * @param validTill the valid till
      */
-    MyRecord(String key, String value, Instant validFrom, Instant validTill) {
+    public MyRecord(String key, String value, Instant validFrom, Instant validTill) {
         this.primaryKey = null;
+        this.key = key;
+        this.value = value;
+        this.validFrom = validFrom;
+        this.validTill = validTill;
+    }
+
+
+    /**
+     * Constructor
+     *
+     * @param primaryKey the primary key
+     * @param key the key
+     * @param value the value
+     * @param validFrom the valid from
+     * @param validTill the valid till
+     */
+    public MyRecord(Long primaryKey, String key, String value, Instant validFrom, Instant validTill) {
+        this.primaryKey = primaryKey;
         this.key = key;
         this.value = value;
         this.validFrom = validFrom;
@@ -128,6 +146,16 @@ public class MyRecord implements ITemporalityRecord<MyRecord, Long, String>, Clo
         
         MyRecord other = (MyRecord) obj;
         return Objects.equals(key, other.key) && Objects.equals(primaryKey, other.primaryKey) && Objects.equals(validFrom, other.validFrom) && Objects.equals(validTill, other.validTill) && Objects.equals(value, other.value);
+    }
+
+
+    /**
+     * Get the value.
+     *
+     * @return the value
+     */
+    public String getValue() {
+        return value;
     }
 
 

@@ -6,12 +6,14 @@
 package com.github.toolarium.temporality.handler;
 
 import com.github.toolarium.temporality.handler.impl.TemporalityHandlerImpl;
+import com.github.toolarium.temporality.handler.impl.normalizer.TemporalityNormalizerImpl;
 
 /**
  * Defines the temporality handler factory.
  */
 public final class TemporalityHandlerFactory {
     private final TemporalityHandlerImpl handler = new TemporalityHandlerImpl();
+    private final ITemporalityNormalizer normalizer = new TemporalityNormalizerImpl();
 
     private static final class Holder {
         static final TemporalityHandlerFactory INSTANCE = new TemporalityHandlerFactory();
@@ -43,6 +45,16 @@ public final class TemporalityHandlerFactory {
      */
     public ITemporalityHandler getTemporalityHandler() {
         return handler;
+    }
+
+
+    /**
+     * Get the temporality normalizer.
+     *
+     * @return the temporality normalizer
+     */
+    public ITemporalityNormalizer getTemporalityNormalizer() {
+        return normalizer;
     }
 
 

@@ -21,6 +21,9 @@ import org.slf4j.LoggerFactory;
 public class MyRecordDAO implements IDAOService<MyRecord> {
     private static final Logger log = LoggerFactory.getLogger(MyRecordDAO.class);
     private Map<String, List<MyRecord>> data;
+    private List<MyRecord> updated;
+    private List<MyRecord> terminated;
+    private List<MyRecord> created;
 
 
     /**
@@ -28,6 +31,9 @@ public class MyRecordDAO implements IDAOService<MyRecord> {
      */
     public MyRecordDAO() {
         data = new ConcurrentHashMap<String, List<MyRecord>>();
+        updated = new ArrayList<MyRecord>();
+        terminated = new ArrayList<MyRecord>();
+        created = new ArrayList<MyRecord>();
     }
 
 
@@ -65,6 +71,14 @@ public class MyRecordDAO implements IDAOService<MyRecord> {
         }
 
         data.put(key, recordList);
+
+        if (TemporalityActionType.CREATE.equals(temporalityActionType)) {
+            created.add(inputRecord);
+        } else if (TemporalityActionType.TERMINATE.equals(temporalityActionType)) {
+            terminated.add(inputRecord);
+        } else {
+            updated.add(inputRecord);
+        }
     }
 
 
@@ -108,6 +122,36 @@ public class MyRecordDAO implements IDAOService<MyRecord> {
         }
 
         return recordList;
+    }
+
+
+    /**
+     * Get the records written with UPDATE.
+     *
+     * @return the updated records
+     */
+    public List<MyRecord> getUpdated() {
+        return updated;
+    }
+
+
+    /**
+     * Get the records written with TERMINATE.
+     *
+     * @return the terminated records
+     */
+    public List<MyRecord> getTerminated() {
+        return terminated;
+    }
+
+
+    /**
+     * Get the records written with CREATE.
+     *
+     * @return the created records
+     */
+    public List<MyRecord> getCreated() {
+        return created;
     }
 
 

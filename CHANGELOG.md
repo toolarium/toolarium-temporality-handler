@@ -5,7 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [ 1.0.4 ] - 2026-09-26
+## [ 1.1.0 ] - 2026-09-26
+### Added
+- Added `ITemporalityNormalizer` to reconcile already-persisted overlapping records for one data key into a consistent, gap-free timeline: records that survived unchanged receive `UPDATE`, replaced records receive `TERMINATE` (with `validTill` set to `validFrom`), and new trimmed segments are inserted with `CREATE`.
+- Added `TemporalityTimeline` (sweep-line timeline computation) and `TemporalityOverlapCheck` (pairwise overlap detection).
+- Added `TemporalityPriority` utility class in `com.github.toolarium.temporality.handler.util` with priority-comparator factories: `latestStart()`, `byGroup()`, and `groupsByCurrentStart()`.
+- Added `TemporalityHandlerFactory.getTemporalityNormalizer()` as the factory entry point for the normalizer.
 
 ## [ 1.0.3 ] - 2026-09-26
 ### Fixed
