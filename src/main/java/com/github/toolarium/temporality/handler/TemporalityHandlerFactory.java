@@ -70,7 +70,7 @@ public final class TemporalityHandlerFactory {
 
     /**
      * Set the canonical maximum validTill value. Any record whose validTill is strictly after
-     * this instant is capped to this value before processing. Defaults to 9999-12-31T00:00:00Z.
+     * this instant is capped to this value before processing. Defaults to 9999-12-31T12:00:00Z.
      *
      * @param maxValidTill the maximum validTill instant; must not be null
      * @return this factory, for chaining

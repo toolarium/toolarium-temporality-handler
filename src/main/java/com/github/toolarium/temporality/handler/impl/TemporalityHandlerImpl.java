@@ -147,7 +147,7 @@ public final class TemporalityHandlerImpl implements ITemporalityHandler {
 
     /**
      * Set the canonical maximum validTill value. Any record whose validTill is strictly after
-     * this instant is capped to this value before processing. Defaults to 9999-12-31T00:00:00Z.
+     * this instant is capped to this value before processing. Defaults to 9999-12-31T12:00:00Z.
      *
      * @param maxValidTill the maximum validTill instant; must not be null and must be after the epoch (1970-01-01T00:00:00Z)
      * @throws IllegalArgumentException if maxValidTill is null or not after the epoch
